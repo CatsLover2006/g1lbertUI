@@ -3,18 +3,13 @@ package ca.litten.g1lbertUI;
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import oshi.*;
-import oshi.hardware.CentralProcessor;
 import oshi.hardware.UsbDevice;
-import oshi.software.os.OperatingSystem;
 import org.apache.commons.lang3.SystemUtils;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,10 +21,6 @@ import static java.awt.GridBagConstraints.*;
 import static java.lang.System.exit;
 
 public class Main {
-    private static JFrame frame;
-    private static List<UsbDevice> root;
-    private static OperatingSystem os;
-    private static CentralProcessor cpu;
     private static SystemInfo sys;
     private static JLabel status;
     private static JLabel substatus;
@@ -56,8 +47,6 @@ public class Main {
     
     public static void main(String[] args) {
         sys = new SystemInfo();
-        os = sys.getOperatingSystem();
-        cpu = sys.getHardware().getProcessor();
         if (SystemUtils.IS_OS_MAC_OSX) {
             System.setProperty("apple.laf.useScreenMenuBar", "true");
             System.setProperty("apple.awt.application.name", "g1lbertUI");
@@ -66,6 +55,7 @@ public class Main {
         } else {
             FlatDarculaLaf.setup();
         }
+        JFrame frame;
         if (!(SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_LINUX)) {
             frame = new JFrame("OS Error");
             frame.add(new JLabel("Your OS is not supported.\nTry booting a Linux live USB."));
@@ -98,8 +88,19 @@ public class Main {
         JButton doIt = new JButton("Do it!");
         doIt.addActionListener(e ->
             new Thread(() -> {
+                System.out.println(SystemUtils.OS_ARCH);
                 if (SystemUtils.IS_OS_MAC_OSX) {
                     runG1lbert("gilbertjb_macos");
+                } else if (SystemUtils.IS_OS_LINUX) {
+                    if (SystemUtils.OS_ARCH.equals("x86_64")) {
+                        runG1lbert("gilbertjb_linux_x86_64");
+                    } else if (SystemUtils.OS_ARCH.contains("arm64")) {
+                        runG1lbert("gilbertjb_linux_arm64");
+                    } else if (SystemUtils.OS_ARCH.contains("arm")) {
+                        runG1lbert("gilbertjb_linux_armhf");
+                    } else {
+                        runG1lbert("gilbertjb_linux");
+                    }
                 }
             }).start());
         new Thread(() -> {
@@ -123,7 +124,7 @@ public class Main {
         frame.setVisible(true);
     }
     
-    private static Pattern buildDetectPattern = Pattern.compile("Device is a .*? with build .*?");
+    private static final Pattern buildDetectPattern = Pattern.compile("Device is a .*? with build .*?");
     
     private static String getLocalPath() {
         try {
