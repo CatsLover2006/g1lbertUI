@@ -2,6 +2,8 @@ package ca.litten.g1lbertUI;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import org.zeroturnaround.exec.ProcessExecutor;
+import org.zeroturnaround.exec.stream.LogOutputStream;
 import oshi.*;
 import oshi.hardware.UsbDevice;
 import org.apache.commons.lang3.SystemUtils;
@@ -13,6 +15,7 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.regex.*;
@@ -137,45 +140,41 @@ public class Main {
     
     private static void runG1lbert(String commandName) {
         idle = false;
-        Runtime runtime = Runtime.getRuntime();
         try {
-            Process process = runtime.exec(getLocalPath() + commandName);
-            InputStream stream = process.getInputStream();
-            String line = "";
-            while(process.isAlive() || (stream.available() != 0)) {
-                for (byte readByte : stream.readNBytes(16)) {
-                    char read = (char) readByte;
-                    if (read == '\n') {
-                        System.out.println(line);
-                        if (line.contains("[error]")) {
-                            if (line.contains("Device already jailbroken!")) {
-                                substatus.setText("Already jailbroken, no need to do anything.");
-                            } else if (line.contains("Failed to open directory \"payload")) {
-                                substatus.setText("Couldn't find device payload, is it supported?");
-                            } else if (line.contains("No device found")) {
+            new ProcessExecutor().command(getLocalPath() + commandName).redirectErrorStream(true).readOutput(true).redirectOutputAlsoTo(new LogOutputStream() {
+                @Override
+                protected void processLine(String line) {
+                    System.out.println(line);
+                    if (line.contains("[error]")) {
+                        if (line.contains("Device already jailbroken!")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Already jailbroken, no need to do anything."));
+                        } else if (line.contains("Failed to open directory \"payload")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Couldn't find device payload, is it supported?"));
+                        } else if (line.contains("No device found")) {
+                            SwingUtilities.invokeLater(() -> {
                                 status.setText("An error occurred!");
                                 substatus.setText("No iOS device is plugged in.");
-                            } else if (line.contains("lockdownd")) {
+                            });
+                        } else if (line.contains("lockdownd")) {
+                            SwingUtilities.invokeLater(() -> {
                                 status.setText("An error occurred!");
                                 substatus.setText("Please unlock your device.");
-                            } else if (line.contains("Could not get device information")) {
+                            });
+                        } else if (line.contains("Could not get device information")) {
+                            SwingUtilities.invokeLater(() -> {
                                 status.setText("An error occurred!");
                                 substatus.setText("Failed to retrieve device information.");
-                            }
-                        } else if (line.contains("[debug]")) {
-                            if (buildDetectPattern.matcher(line).find()) {
-                                String[] lineSplit = line.split(" ");
-                                status.setText("Found a " + lineSplit[4] + " on " + lineSplit[7] + "!");
-                            }
+                            });
                         }
-                        line = "";
-                    } else {
-                        line += read;
+                    } else if (line.contains("[debug]")) {
+                        if (buildDetectPattern.matcher(line).find()) {
+                            String[] lineSplit = line.split(" ");
+                            SwingUtilities.invokeLater(() -> status.setText("Found a " + lineSplit[4] + " on " + lineSplit[7] + "!"));
+                        }
                     }
-                }
-            }
+                }}).readOutput(true).execute();
             idle = true;
-        } catch (IOException e) {
+        } catch (Throwable e) {
             status.setText("An error occurred!");
             substatus.setText("Couldn't run command: ./" + commandName);
             idle = true;
