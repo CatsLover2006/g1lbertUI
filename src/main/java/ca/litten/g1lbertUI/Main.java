@@ -165,6 +165,11 @@ public class Main {
                                     status.setText("An error occurred!");
                                     substatus.setText("Please unlock your device.");
                                 });
+                            } else if (line.contains("activated")) {
+                                SwingUtilities.invokeLater(() -> {
+                                    status.setText("An error occurred!");
+                                    substatus.setText("Device is not activated.");
+                                });
                             } else if (line.contains("Could not get device information")) {
                                 SwingUtilities.invokeLater(() -> {
                                     status.setText("An error occurred!");
@@ -189,6 +194,8 @@ public class Main {
                             } else if (line.toLowerCase().contains("restoring backup")) {
                                 SwingUtilities.invokeLater(() -> substatus.setText("Restoring backup..."));
                                 curSubstate = "Restoring backup... ";
+                            } else if (line.contains("Will try to fix now")) {
+                                SwingUtilities.invokeLater(() -> substatus.setText("Fixing failed jailbreak..."));
                             }
                         } else if (line.contains("Waiting for reboot")) {
                             SwingUtilities.invokeLater(() -> substatus.setText("Rebooting device..."));
@@ -198,7 +205,7 @@ public class Main {
                         } else if (line.contains("run the 'g1lbertJB' icon")) {
                             SwingUtilities.invokeLater(() -> substatus.setText("Open the \"g1lbertjb\" app to continue."));
                         } else if (line.contains("done")) {
-                            SwingUtilities.invokeLater(() -> substatus.setText("Jailbroken!"));
+                            SwingUtilities.invokeLater(() -> substatus.setText("Done!"));
                             idle = true;
                         }
                         line = "";
@@ -206,6 +213,7 @@ public class Main {
                         line += read;
                     }
                 }
+                System.out.println(stream.available());
             }
             idle = true;
         } catch (IOException e) {
