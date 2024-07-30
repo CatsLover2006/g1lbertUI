@@ -201,7 +201,10 @@ public class Main {
                     } else if (line.contains("Waiting for reboot")) {
                         SwingUtilities.invokeLater(() -> substatus.setText("Rebooting device..."));
                     } else if (line.contains("%")) {
-                        SwingUtilities.invokeLater(() -> substatus.setText(curSubstate + line.substring(53, 57).strip()));
+                        SwingUtilities.invokeLater(() -> {
+                            String[] percent = line.substring(53, 57).split(" ");
+                            substatus.setText(curSubstate + percent[Math.max(0, percent.length - 1)]);
+                        });
                     } else if (line.contains("run the 'g1lbertJB' icon")) {
                         SwingUtilities.invokeLater(() -> substatus.setText("Open the \"g1lbertjb\" app to continue."));
                     } else if (line.contains("Will try to fix now")) {
