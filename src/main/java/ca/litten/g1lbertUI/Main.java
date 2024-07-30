@@ -139,12 +139,23 @@ public class Main {
     
     private static void runG1lbert(String commandName) {
         idle = false;
+        int readable = 0;
         Runtime runtime = Runtime.getRuntime();
         try {
             Process process = runtime.exec(getLocalPath() + commandName, new String[0], new File(getLocalPath()));
             InputStream stream = process.getInputStream();
-            while(process.isAlive() || (stream.available() != 0)) {
-                for (byte readByte : stream.readNBytes(16)) {
+            while(process.isAlive() || ((readable = stream.available()) != 0)) {
+                if (readable == 0) {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException e) {
+                        System.err.println("Failed to sleep.");
+                    }
+                    continue;
+                } else {
+                    System.out.println("Reading " + readable + " bytes.");
+                }
+                for (byte readByte : stream.readNBytes(readable)) {
                     char read = (char) readByte;
                     if (read == '\n') {
                         System.out.println(line);
@@ -213,7 +224,6 @@ public class Main {
                         line += read;
                     }
                 }
-                System.out.println(stream.available());
             }
             idle = true;
         } catch (IOException e) {
