@@ -5,6 +5,8 @@ import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import oshi.*;
 import oshi.hardware.UsbDevice;
 import org.apache.commons.lang3.SystemUtils;
+import org.zeroturnaround.exec.ProcessExecutor;
+import org.zeroturnaround.exec.stream.LogOutputStream;
 
 import javax.swing.*;
 import java.awt.*;
@@ -134,99 +136,79 @@ public class Main {
     }
     
     private static String curSubstate = "";
-    private static String line = "";
-    private static String pLine = "";
     
     private static void runG1lbert(String commandName) {
         idle = false;
         int readable = 0;
         Runtime runtime = Runtime.getRuntime();
         try {
-            Process process = runtime.exec(getLocalPath() + commandName, new String[0], new File(getLocalPath()));
-            InputStream stream = process.getInputStream();
-            while(process.isAlive() || ((readable = stream.available()) != 0)) {
-                if (readable == 0) {
-                    try {
-                        Thread.sleep(1);
-                    } catch (InterruptedException e) {
-                        System.err.println("Failed to sleep.");
-                    }
-                    continue;
-                } else {
-                    System.out.println("Reading " + readable + " bytes.");
-                }
-                for (byte readByte : stream.readNBytes(readable)) {
-                    char read = (char) readByte;
-                    if (read == '\n') {
-                        System.out.println(line);
-                        if (line.contains("[error]")) {
-                            if (line.contains("Device already jailbroken!")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Already jailbroken, no need to do anything."));
-                            } else if (line.contains("Failed to open directory \"payload")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Couldn't find device payload, is it supported?"));
-                            } else if (line.contains("version is not supported")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Device and/or version is not supported."));
-                            } else if (line.contains("No device found")) {
-                                SwingUtilities.invokeLater(() -> {
-                                    status.setText("An error occurred!");
-                                    substatus.setText("No iOS device is plugged in.");
-                                });
-                            } else if (line.contains("lockdownd")) {
-                                SwingUtilities.invokeLater(() -> {
-                                    status.setText("An error occurred!");
-                                    substatus.setText("Please unlock your device.");
-                                });
-                            } else if (line.contains("activated")) {
-                                SwingUtilities.invokeLater(() -> {
-                                    status.setText("An error occurred!");
-                                    substatus.setText("Device is not activated.");
-                                });
-                            } else if (line.contains("Could not get device information")) {
-                                SwingUtilities.invokeLater(() -> {
-                                    status.setText("An error occurred!");
-                                    substatus.setText("Failed to retrieve device information.");
-                                });
-                            }
-                        } else if (line.contains("[debug]")) {
-                            if (buildDetectPattern.matcher(line).find()) {
-                                String[] lineSplit = line.split(" ");
-                                SwingUtilities.invokeLater(() -> status.setText("Found a " + lineSplit[4] + " on " + lineSplit[7] + "!"));
-                            } else if (line.contains("Beginning jailbreak")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Starting jailbreak..."));
-                            } else if (line.contains("Rebooting")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Rebooting device..."));
-                            } else if (line.toLowerCase().contains("creating backup")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Backing up device..."));
-                                curSubstate = "Backing up device... ";
-                            } else if (line.toLowerCase().contains("modifying backup")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Pwning backup..."));
-                            } else if (line.toLowerCase().contains("crash lockdownd")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Crashing lockdownd..."));
-                            } else if (line.toLowerCase().contains("restoring backup")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Restoring backup..."));
-                                curSubstate = "Restoring backup... ";
-                            } else if (line.contains("Will try to fix now")) {
-                                SwingUtilities.invokeLater(() -> substatus.setText("Fixing failed jailbreak..."));
-                            }
-                        } else if (line.contains("Waiting for reboot")) {
-                            SwingUtilities.invokeLater(() -> substatus.setText("Rebooting device..."));
-                        } else if (line.contains("%")) {
-                            pLine = line;
-                            SwingUtilities.invokeLater(() -> substatus.setText(curSubstate + pLine.substring(53, 57).strip()));
-                        } else if (line.contains("run the 'g1lbertJB' icon")) {
-                            SwingUtilities.invokeLater(() -> substatus.setText("Open the \"g1lbertjb\" app to continue."));
-                        } else if (line.contains("done")) {
-                            SwingUtilities.invokeLater(() -> substatus.setText("Done!"));
-                            idle = true;
+            new ProcessExecutor().command(getLocalPath() + commandName).directory(new File(getLocalPath()))
+                    .redirectErrorStream(true).readOutput(true).redirectOutput(new LogOutputStream() {
+                @Override
+                protected void processLine(String line) {
+                    System.out.println(line);
+                    if (line.contains("[error]")) {
+                        if (line.contains("Device already jailbroken!")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Already jailbroken, no need to do anything."));
+                        } else if (line.contains("Failed to open directory \"payload")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Couldn't find device payload, is it supported?"));
+                        } else if (line.contains("version is not supported")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Device and/or version is not supported."));
+                        } else if (line.contains("No device found")) {
+                            SwingUtilities.invokeLater(() -> {
+                                status.setText("An error occurred!");
+                                substatus.setText("No iOS device is plugged in.");
+                            });
+                        } else if (line.contains("lockdownd")) {
+                            SwingUtilities.invokeLater(() -> {
+                                status.setText("An error occurred!");
+                                substatus.setText("Please unlock your device.");
+                            });
+                        } else if (line.contains("activated")) {
+                            SwingUtilities.invokeLater(() -> {
+                                status.setText("An error occurred!");
+                                substatus.setText("Device is not activated.");
+                            });
+                        } else if (line.contains("Could not get device information")) {
+                            SwingUtilities.invokeLater(() -> {
+                                status.setText("An error occurred!");
+                                substatus.setText("Failed to retrieve device information.");
+                            });
                         }
-                        line = "";
-                    } else {
-                        line += read;
+                    } else if (line.contains("[debug]")) {
+                        if (buildDetectPattern.matcher(line).find()) {
+                            String[] lineSplit = line.split(" ");
+                            SwingUtilities.invokeLater(() -> status.setText("Found a " + lineSplit[4] + " on " + lineSplit[7] + "!"));
+                        } else if (line.contains("Beginning jailbreak")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Starting jailbreak..."));
+                        } else if (line.contains("Rebooting")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Rebooting device..."));
+                        } else if (line.toLowerCase().contains("creating backup")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Backing up device..."));
+                            curSubstate = "Backing up device... ";
+                        } else if (line.toLowerCase().contains("modifying backup")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Pwning backup..."));
+                        } else if (line.toLowerCase().contains("crash lockdownd")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Crashing lockdownd..."));
+                        } else if (line.toLowerCase().contains("restoring backup")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Restoring backup..."));
+                            curSubstate = "Restoring backup... ";
+                        } else if (line.contains("Will try to fix now")) {
+                            SwingUtilities.invokeLater(() -> substatus.setText("Fixing failed jailbreak..."));
+                        }
+                    } else if (line.contains("Waiting for reboot")) {
+                        SwingUtilities.invokeLater(() -> substatus.setText("Rebooting device..."));
+                    } else if (line.contains("%")) {
+                        SwingUtilities.invokeLater(() -> substatus.setText(curSubstate + line.substring(53, 57).strip()));
+                    } else if (line.contains("run the 'g1lbertJB' icon")) {
+                        SwingUtilities.invokeLater(() -> substatus.setText("Open the \"g1lbertjb\" app to continue."));
+                    } else if (line.contains("done")) {
+                        SwingUtilities.invokeLater(() -> substatus.setText("Done!"));
+                        idle = true;
                     }
                 }
-            }
-            idle = true;
-        } catch (IOException e) {
+            }).executeNoTimeout();
+        } catch (Exception e) {
             status.setText("An error occurred!");
             substatus.setText("Couldn't run command: ./" + commandName);
             idle = true;
